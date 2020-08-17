@@ -5,6 +5,93 @@ k8s的系统相对来说比较复杂了，那么使用ansible playbook进行集�
 1、卸载ntp
 2、安装chrony，分为离线安装还是在线安装，离线安装对各种系统进行判断安装
 3、安装完之后，根据server client分别进行配置、启动
+[deploy]
+这个role用于在ansible主机上生成一些集群需要的证书、config配置文件,在使用ansible-playbook部署的时候，目标主机是localhost
+1、准备一些目录，也就是/etc/ansible/.cluster/{ssl,backup}
+2、在/etc/ansible目录下创建bin目录，权限755
+3、判断是否存在证书文件来注册变量p，以便重复执行的时候保证幂等性而不再创建证书
+4、准备CA配置文件和签名请求，其中就是两个文件： ca-config.json  ca-csr.json
+   其中ca-config.json中配置的是50年过期，ca-csr.json配置的是100年过期	其中根据变量p决定是否跳过
+5、生成CA证书和私钥 用于给各个组件签名证书 其中根据变量p决定是否跳过
+   cfssl gencert -initca ca-csr.json
+   cfssljson -bare ca
+   这样生成ca的私钥cs-key.pem、ca的证书ca.pem,ca.csr是用于ca请求签名的文件
+   2020/08/17 14:56:28 [INFO] generating a new CA key and certificate from CSR
+   2020/08/17 14:56:28 [INFO] generate received request
+   2020/08/17 14:56:28 [INFO] received CSR
+   2020/08/17 14:56:28 [INFO] generating key: rsa-2048
+   2020/08/17 14:56:29 [INFO] encoded CSR
+   2020/08/17 14:56:29 [INFO] signed certificate with serial number 218990291340890989473094657237962215806466142591
+6、配置kubectl的配置文件
+	1、删除原有的kubeconfig
+	2、如果只读的话，配置只读rbac文件
+	3、准备kubectl的USER_NAME证书签名请求文件admin-csr.json
+	4、自签名admin的证书还有私钥文件
+	cfssl gencert \
+        -ca=ca.pem \
+        -ca-key=ca-key.pem \
+        -config=ca-config.json \
+        -profile=kubernetes admin-csr.json | cfssljson -bare admin"
+     上面的步骤生成admin的私钥文件admin-key.pem admin的证书文件admin.pem
+    5、设置集群的参数
+    /etc/ansible/bin/kubectl config set-cluster {{ CLUSTER_NAME }} \
+        --certificate-authority={{ base_dir }}/.cluster/ssl/ca.pem \
+        --embed-certs=true \
+        --server={{ KUBE_APISERVER }}"
+      apiserver 默认是第一个master节点，指定证书机构为自己创建的ca，证书ca.pem，相当于浏览器导入证书一样，
+    6、配置客户端认证参数 kubectl操作需要双向认证，这里指定客户端的证书与私钥文件
+    kubectl config set-credentials admin \
+        --client-certificate=/etc/ansible/.cluster/ssl/admin.pem \
+        --embed-certs=true \
+        --client-key=/etc/ansible/.cluster/ssl/admin-key.pem"
+    7、设置上下文参数
+    kubectl config set-context context-cluster1-admin --cluster=cluster1 --user=admin"
+
+    8、选择默认上下文
+    kubectl config use-context {{ CONTEXT_NAME }}"
+ 7、配置kube-proxy
+ 	1、准备kube-proxy证书签名请求,文件是kube-proxy-csr.json
+ 	2、创建kube-proxy的证书与私钥
+ 	{{ base_dir }}/bin/cfssl gencert \
+        -ca=ca.pem \
+        -ca-key=ca-key.pem \
+        -config=ca-config.json \
+        -profile=kubernetes kube-proxy-csr.json | {{ base_dir }}/bin/cfssljson -bare kube-proxy"
+    3、设置集群的参数 指定ca的证书文件
+    { base_dir }}/bin/kubectl config set-cluster kubernetes \
+        --certificate-authority={{ base_dir }}/.cluster/ssl/ca.pem \
+        --embed-certs=true \
+        --server={{ KUBE_APISERVER }} \
+        --kubeconfig={{ base_dir }}/.cluster/kube-proxy.kubeconfig
+    4、设置客户端认证参数 指定kube-proxy的私钥和证书文件
+    {{ base_dir }}/bin/kubectl config set-credentials kube-proxy \
+        --client-certificate={{ base_dir }}/.cluster/ssl/kube-proxy.pem \
+        --client-key={{ base_dir }}/.cluster/ssl/kube-proxy-key.pem \
+        --embed-certs=true \
+        --kubeconfig={{ base_dir }}/.cluster/kube-proxy.kubeconfig
+    5、设置上下文以及选择默认的上下文
+8、配置kube-controller-manager
+	1、创建证书签名签名请求文件 kube-controller-manager-csr.json
+	2、签名得到证书与私钥
+	3、设置集群参数 指定ca的证书、kube-controller-manager的配置文件
+	kubectl config set-cluster kubernetes \
+        --certificate-authority={{ base_dir }}/.cluster/ssl/ca.pem \
+        --embed-certs=true \
+        --server={{ KUBE_APISERVER }} \
+        --kubeconfig={{ base_dir }}/.cluster/kube-controller-manager.kubeconfig"
+    4、设置认证参数
+    kubectl config set-credentials system:kube-controller-manager \
+        --client-certificate={{ base_dir }}/.cluster/ssl/kube-controller-manager.pem \
+        --client-key={{ base_dir }}/.cluster/ssl/kube-controller-manager-key.pem \
+        --embed-certs=true \
+        --kubeconfig={{ base_dir }}/.cluster/kube-controller-manager.kubeconfig"
+    5、设置上下文与选择默认上下文
+ 9、配置kube-scheduler
+ 	具体步骤类似于上面组件的配置
+ 10、将easzctl放到/usr/bin/里面可以直接用
+ 11、将kubectl放到/usr/bin/里面可以直接用
+ 12、配置kubectl自动补全
+ 13、安装netaddr
 [prepare]
 1、卸载删除默认的防火墙软件。
 2、在线或者离线安装基础软件包，分为：
@@ -19,4 +106,23 @@ k8s的系统相对来说比较复杂了，那么使用ansible playbook进行集�
 	socat       
 3、关闭selinux   
 4、journal日志相关优化
+5、禁用系统swap
+6、转换内核版本为浮点数
+7、设置NF_CONNTRACK，以系统内核是否大于4.19为依据，用于后面打开的内核模块
+8、加载内核的模块，一些关于ipvs的模块
+9、启用systemd自动加载模块服务
+10、增加内核模块开机加载配置
+11、设置一些系统参数，并且立即生效
+12、创建systemd配置目录、设置系统的ulimits以及把SCTP列入内核模块黑名单
+13、创建k8s相关的二进制文件的存放目录、ca目录、/root/.kube,其中bin_dir、ca_dir 在hosts文件中定义
+14、复制证书工具到目标主机
+15、配置环境变量PATH，将k8s二进制文件的路径加进去
+16、分发证书相关的文件：
+	admin.pem
+	admin-key.pem
+	ca.pem
+	ca-key.pem
+	ca-config.json
+17、添加kubectl自动补全
+18、分发/root/.kube/config，这个文件在本机的/root/.kube/config，copy过去即可,这个文件生成于01.prepare.yml的操作中
 

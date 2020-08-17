@@ -6,7 +6,7 @@
   - ex-lb
   - chrony
   roles:
-  - { role: chrony, when: "groups['chrony']|length > 0" }
+  - { role: chrony, when: "groups['chrony']|length > 0" } #也就是说如果提供了chrony服务器，那么先给所有主机配置上时间同步
 
 # to create CA, kubeconfig, kube-proxy.kubeconfig etc.
 - hosts: localhost

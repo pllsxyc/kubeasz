@@ -66,4 +66,4 @@
     - name: 分发 kube-scheduler.kubeconfig配置文件
       copy: src={{ base_dir }}/.cluster/kube-scheduler.kubeconfig dest=/etc/kubernetes/kube-scheduler.kubeconfig
       when: "inventory_hostname in groups['kube-master']"
-  when: "inventory_hostname in groups['kube-master'] or inventory_hostname in groups['kube-node']"
+  when: "inventory_hostname in groups['kube-master'] or inventory_hostname in groups['kube-node']" #意思就是k8s的master节点和node节点需要做的操作

@@ -14,6 +14,8 @@
   set_fact:
      KERNEL_VER: "{{ ansible_kernel.split('-')[0].split('.')[0]|int + ansible_kernel.split('-')[0].split('.')[1]|int/100 }}"
 
+
+# 以内核是否大于4.19位判断依据，以下两个task用于给NF_CONNTRACK赋值
 - name: 设置 nf_conntrack 模块名
   set_fact: NF_CONNTRACK="nf_conntrack"
   when: "KERNEL_VER|float >= 4.19"
