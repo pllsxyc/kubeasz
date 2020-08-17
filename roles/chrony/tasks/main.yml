@@ -1,3 +1,4 @@
+#debian系 系统安装，在线安装的时候刷新apt缓存
 - name: apt更新缓存刷新
   apt: update_cache=yes cache_valid_time=72000
   ignore_errors: true
@@ -5,11 +6,13 @@
   - 'ansible_distribution in ["Ubuntu","Debian"]'
   - 'INSTALL_SOURCE != "offline"'
 
+# debian系 卸载ntp
 - name: apt 卸载 ntp
   shell: 'apt remove -y ntp'
   when: 'ansible_distribution in ["Ubuntu","Debian"]' 
   ignore_errors: true
 
+# redhat系 卸载ntp
 - name: yum 卸载 ntp
   shell: 'yum remove -y ntp'
   when: 'ansible_distribution in ["CentOS","RedHat","Amazon"]'
@@ -17,6 +20,7 @@
       warn: false
   ignore_errors: true
 
+#在线安装chrony
 - name: 安装 chrony
   package: name=chrony state=present
   when: 'INSTALL_SOURCE != "offline"'
@@ -41,7 +45,7 @@
   - name: 启动 chrony server
     service: name=chrony state=restarted enabled=yes
     when: 'ansible_distribution in ["Ubuntu","Debian"]' 
-  when: 'inventory_hostname == groups.chrony[0]'
+  when: 'inventory_hostname == groups.chrony[0]' #表示server端只配置hosts文件中的chrony组的第一个成员，也就是我们指定的chrony服务器地址
 
 - block:
   - name: 配置 chrony client
@@ -59,4 +63,4 @@
   - name: 启动 chrony client
     service: name=chrony state=restarted enabled=yes
     when: 'ansible_distribution in ["Ubuntu","Debian"]' 
-  when: 'inventory_hostname != groups.chrony[0]'
+  when: 'inventory_hostname != groups.chrony[0]' #表示除hosts文件中chrony服务器地址之外都配置client，其实server的地址也在其他组里面，所以server也会配置client。

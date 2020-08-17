@@ -36,6 +36,7 @@
   when: ansible_distribution_release == "bionic"
   ignore_errors: true
 
+# centos7 系统直接看这里===========
 - block:
   - name: 分发 basic_centos7 离线包
     copy:

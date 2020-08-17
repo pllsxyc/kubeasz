@@ -1,0 +1,22 @@
+k8s的系统相对来说比较复杂了，那么使用ansible playbook进行集群管控，这个playbook就比较复杂了，可以把这个项目当做一个很好的playbook参考书，这样在写其他playbook的时候可以做些借鉴
+这个文件的作用就是把roles目录下的所有role的功能分步总结。以便在分析流程的时候快速定位。
+
+[chrony]
+1、卸载ntp
+2、安装chrony，分为离线安装还是在线安装，离线安装对各种系统进行判断安装
+3、安装完之后，根据server client分别进行配置、启动
+[prepare]
+1、卸载删除默认的防火墙软件。
+2、在线或者离线安装基础软件包，分为：
+	bash-completion
+	conntrack-tools
+	ipset          
+	ipvsadm        
+	libseccomp     
+	nfs-utils      
+	psmisc         
+	rsync          
+	socat       
+3、关闭selinux   
+4、journal日志相关优化
+
