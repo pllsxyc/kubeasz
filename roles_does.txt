@@ -125,4 +125,4 @@ k8s的系统相对来说比较复杂了，那么使用ansible playbook进行集�
 	ca-config.json
 17、添加kubectl自动补全
 18、分发/root/.kube/config，这个文件在本机的/root/.kube/config，copy过去即可,这个文件生成于01.prepare.yml的操作中
-
+19、分发/etc/ansible/.cluster/kube-proxy.kubeconfig 到目的主机的/etc/kubernetes/kube-proxy.kubeconfig,类似的还有kube-controller-manager、kube-scheduler的配置文件,只不过这两个文件是只复制到master节点上。

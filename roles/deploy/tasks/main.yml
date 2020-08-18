@@ -20,7 +20,7 @@
   - "ca-csr.json"
   when: p.stat.isreg is not defined
 
-- name: 生成 CA 证书和私钥
+- name: 生成 CA 证书和私钥  #先生成CA的私钥和证书文件，用来给后面其他组件的证书进行签名
   when: p.stat.isreg is not defined
   shell: "cd {{ base_dir }}/.cluster/ssl && \
 	 {{ base_dir }}/bin/cfssl gencert -initca ca-csr.json | {{ base_dir }}/bin/cfssljson -bare ca" 
