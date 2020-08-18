@@ -23,7 +23,7 @@ SYS_RESERVED_ENABLED: "no"
 # haproxy balance mode 
 BALANCE_ALG: "roundrobin"
 
-# 设置 APISERVER 地址
+# 设置 APISERVER 地址,如果是master节点，就是本机内网地址ip:6443,如果是node节点，如果master节点只有一个，就是master节点内网ip:6443,否则就是127.0.0.1:6443
 KUBE_APISERVER: "{%- if inventory_hostname in groups['kube-master'] -%} \
                      https://{{ inventory_hostname }}:6443 \
                  {%- else -%} \

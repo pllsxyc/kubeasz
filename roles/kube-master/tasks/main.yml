@@ -53,7 +53,7 @@
   lineinfile:
     dest: "{{ item }}"
     regexp: "^    server"
-    line: "    server: https://{{ inventory_hostname }}:6443"
+    line: "    server: https://{{ inventory_hostname }}:6443"  #server修改为本机IP
   with_items:
   - "/root/.kube/config"
   - "/etc/kubernetes/kube-controller-manager.kubeconfig"

@@ -5,6 +5,8 @@ k8s的系统相对来说比较复杂了，那么使用ansible playbook进行集�
 1、卸载ntp
 2、安装chrony，分为离线安装还是在线安装，离线安装对各种系统进行判断安装
 3、安装完之后，根据server client分别进行配置、启动
+
+
 [deploy]
 这个role用于在ansible主机上生成一些集群需要的证书、config配置文件,在使用ansible-playbook部署的时候，目标主机是localhost
 1、准备一些目录，也就是/etc/ansible/.cluster/{ssl,backup}
@@ -92,6 +94,8 @@ k8s的系统相对来说比较复杂了，那么使用ansible playbook进行集�
  11、将kubectl放到/usr/bin/里面可以直接用
  12、配置kubectl自动补全
  13、安装netaddr
+
+
 [prepare]
 1、卸载删除默认的防火墙软件。
 2、在线或者离线安装基础软件包，分为：
@@ -126,3 +130,88 @@ k8s的系统相对来说比较复杂了，那么使用ansible playbook进行集�
 17、添加kubectl自动补全
 18、分发/root/.kube/config，这个文件在本机的/root/.kube/config，copy过去即可,这个文件生成于01.prepare.yml的操作中
 19、分发/etc/ansible/.cluster/kube-proxy.kubeconfig 到目的主机的/etc/kubernetes/kube-proxy.kubeconfig,类似的还有kube-controller-manager、kube-scheduler的配置文件,只不过这两个文件是只复制到master节点上。
+
+
+[etcd]
+安装etcd的role
+1、准备etcd的相关目录：二进制文件存放目录，ca的目录、证书的目录、etcd的工作目录
+2、离线copy etcd的二进制文件 etcd、etcdctl
+3、分发证书相关文件包括ca.pem、ca-key.pem、ca-config.json
+4、创建etc的证书请求文件etcd-csr.json
+5、创建etcd的证书以及私钥
+6、后面的流程就是启动etcd以及开机启动
+
+
+[containerd]
+因为容器运行时选择的docker，所以这个跳过
+
+
+[docker]
+安装docker的操作role
+1、判断是否已经安装过docker并注册变量 docker_svc
+2、判断是否安装过containerd并注册变量 
+3、判断docker版本
+4、准备docker相关目录
+5、根据docker版本是否大于18.09 下载不同的docker二进制文件。
+6、配置docker命令自动补全
+7、配置docker国内加速 daemon.json
+8、开启docker以及自启动
+
+
+[kube-master]
+master节点做的一些操作
+1、下载kube-master 二进制文件包括
+	- kube-apiserver
+	- kube-controller-manager
+	- kube-scheduler
+	- kubectl       
+2、创建k8s的证书签名请求文件kubernetes-csr.json
+3、创建k8s的证书和私钥
+	fssl gencert \
+        -ca={{ ca_dir }}/ca.pem \
+        -ca-key={{ ca_dir }}/ca-key.pem \
+        -config={{ ca_dir }}/ca-config.json \
+        -profile=kubernetes kubernetes-csr.json | {{ bin_dir }}/cfssljson -bare kubernetes"
+
+4、创建aggregator proxy证书请求以及创建证书、私钥
+5、根据是否开启basic-auth设置随机密码以及创建basic-auth.csv文件,这里通过修改roles/kube-master/defaults/main.yml中设置auth-basic为yes以及自己创建账号密码。
+6、替换kubeconfig中的kube-apiserver地址。也就是每个master节点修改kube-apiserver为自己的内网地址。
+包括以下文件：
+- "/root/.kube/config"
+- "/etc/kubernetes/kube-controller-manager.kubeconfig"
+- "/etc/kubernetes/kube-scheduler.kubeconfig"
+7、创建master服务的systemd unit文件
+包括以下文件：
+  - kube-apiserver.service
+  - kube-controller-manager.service
+  - kube-scheduler.service
+ 8、对上述master节点的服务开机自启动
+ 9、启动master节点的服务。
+ 10、配置用于basic-auth的用户的rbac权限。
+
+
+[kube-node]
+node节点所做的操作role
+1、创建kube-node的相关目录。包括：
+  - /var/lib/kubelet
+  - /var/lib/kube-proxy
+  - /etc/cni/net.d
+2、下载node节点所需的二进制文件
+  - kubectl
+  - kubelet
+  - kube-proxy
+  - bridge
+  - host-local
+  - loopback
+3、安装haproxy，其中haproxy中的上游地址是for 循环master节点。而haproxy监听的是127.0.0.1:6443，
+4、替换kube-apiserver 的地址，将本地的kube-apiserver 配置成http://127.0.0.1:6443,也就是先访问本地的haproxy服务，然后根据负载均衡算法反向代理到真正的master节点。node节点是这样，而master节点直接访问本机ip地址:6443
+
+5、配置kubelet，包括证书签名请求、证书、私钥、设置集群参数、客户端认证参数、设置上下文参数。
+6、准备cni配置文件
+7、创建kubelet的配置文件、systemd unit文件
+8、开机自启动kubelet、启动kubelet服务。
+9、替换kube-proxy配置文件中的apiserver 地址，地址策略和上面一样。
+10、创建kube-proxy服务文件，开机自启动、启动kube-proxy
+11、轮询等待kubelet启动然后等待node节点达到ready状态。
+
+
