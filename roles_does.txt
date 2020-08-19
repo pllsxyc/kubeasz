@@ -214,4 +214,31 @@ node节点所做的操作role
 10、创建kube-proxy服务文件，开机自启动、启动kube-proxy
 11、轮询等待kubelet启动然后等待node节点达到ready状态。
 
+[flannel]
+1、创建flannel相关目录，包括：
+	/etc/cni/net.d
+	/opt/kube/images
+	/opt/kube/kube-system
+2、配置flannel daemonset的yaml文件
+3、下载flannel cni plugins
+  - bridge
+  - flannel
+  - host-local
+  - loopback
+  - portmap
+4、尝试导入flannel的离线镜像
+5、运行flannel网络
+6、删除默认的cni配置
+7、轮询等待flannel运行。
+
+--------其他网络插件和flannel流程差不多，可以看具体网络插件的role
+
+[cluster-addon]
+1、在node节点创建/opt/kube/kube-system目录
+2、准备DNS的配置文件
+3、获取所有已经创建的pod信息
+4、获取已经下载的离线镜像信息
+5、推动离线镜像以及导入 包括dns、metrics-server、dashboard
+6、分别部署dns、metric-server、dashboard
+
 
