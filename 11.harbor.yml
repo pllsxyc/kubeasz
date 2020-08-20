@@ -7,8 +7,7 @@
   - { role: chrony, when: "NEW_INSTALL == 'yes' and groups['chrony']|length > 0" }
   - { role: prepare, when: "NEW_INSTALL == 'yes'" }
   - { role: docker, when: "NEW_INSTALL == 'yes'" }
-  # 如果复用node节点的话，上述NEW_INSTALL可以填为no
-  - { role: harbor } # 这里删除掉对NEW_INSTALL的判断，因为不论是否NEW_INSTALL都要安装harbor
+  - { role: harbor, when: "NEW_INSTALL == 'yes'" } 
   tasks:
   - name: Fetching the HARBOR SERVER's CA cert
     fetch:
@@ -79,6 +78,7 @@
       regexp: '{{ harbor_hostname }}'
       line: "{{ groups['harbor'][0] }} {{ harbor_hostname }}"
     when: "hostvars[groups.harbor[0]]['HARBOR_DOMAIN'] != ''" #如果制定了HARBOR_DOMAIN的话，否则就直接使用ip地址
+    ignore_errors: true
   
   # [optional] 使用 cloud-init 初始化的虚拟机，/etc/hosts 后会重启时被替换，需修改对应的模板文件 
   - name: Adding cloud-init hosts template (debian) entry for the HARBOR DOMAIN
@@ -88,6 +88,8 @@
       regexp: '{{ harbor_hostname }}'
       line: "{{ groups['harbor'][0] }} {{ harbor_hostname }}"
     when: 'ansible_distribution in ["Ubuntu","Debian"]'
+    ignore_errors: true
+
 
   - name: Adding cloud-init hosts template (redhat) entry for the HARBOR DOMAIN
     lineinfile:
@@ -96,3 +98,4 @@
       regexp: '{{ harbor_hostname }}'
       line: "{{ groups['harbor'][0] }} {{ harbor_hostname }}"
     when: 'ansible_distribution in ["CentOS","RedHat","Amazon"]' 
+    ignore_errors: true
