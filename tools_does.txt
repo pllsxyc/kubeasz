@@ -1,0 +1,58 @@
+[add_etcd]
+1、在ansible控制端先获取etcd集群状态
+2、部署一个etcd成员，一次只能添加一个
+3、重启etcd集群。
+
+[add_node]
+1、安装chrony
+2、prepare工作
+3、安装docker
+4、安装node节点组件
+5、安装网络插件
+6、创建离线镜像目录，导入离线镜像
+
+
+[add_master]
+1、多安装一些master组件，其余同add_node
+2、设置master节点不可调度
+3、设置master节点角色为master
+
+
+[del_etcd]
+1、判断节点是否在etcd的group中，如果不在则退出ansible-playbook任务
+2、如果etcd节点只有一个，那么也不能删除，playbook退出
+3、注册变量NODE_IPS，将所有etcd的节点IP添加到变量中
+4、获取etcd集群的状态
+5、获取一个处于running状态的etcd节点
+6、获取将要被删除的etcd节点的ID
+7、获取将要被删除的etcd节点的NAME
+8、删除etcd节点
+9、从ansible的hosts文件中删除被删除掉的etcd节点
+10、重新配置etcd并重启etcd集群。
+
+
+
+[del_node]
+1、如果要删除的节点是最后一个master节点，则不能删除
+2、驱逐node上的pod
+3、尽可能清除node节点上的配置
+	1、停止kubelet、kube-proxy服务
+	2、卸载kubelet挂载的文件系统目录：/var/lib/kubelet下的子目录，这些都是以tmpfs形式挂载。
+	3、删除node节点上的一些目录
+		- "/var/lib/kubelet/"
+	    - "/var/lib/kube-proxy/"
+	    - "/etc/systemd/system/kubelet.service"
+	    - "/etc/systemd/system/kube-proxy.service"
+	    - "/opt/kube/kube-system/"
+	    - "/etc/kubernetes/"
+	    - "/root/.kube/config"
+	4、卸载容器运行时例如docker、containerd，以及删除其配置、数据文件目录。
+4、删除node节点
+5、删除node节点在hosts文件中的配置
+
+[del_master]
+1、判断是不是最后一个master节点，如果是则退出playbook
+2、驱逐节点上的pod
+3、清理节点
+4、删除节点
+5、从hosts文件中删除被删掉的节点
