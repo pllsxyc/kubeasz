@@ -7,7 +7,8 @@
   - { role: chrony, when: "NEW_INSTALL == 'yes' and groups['chrony']|length > 0" }
   - { role: prepare, when: "NEW_INSTALL == 'yes'" }
   - { role: docker, when: "NEW_INSTALL == 'yes'" }
-  - { role: harbor, when: "NEW_INSTALL == 'yes'" }
+  # 如果复用node节点的话，上述NEW_INSTALL可以填为no
+  - { role: harbor } # 这里删除掉对NEW_INSTALL的判断，因为不论是否NEW_INSTALL都要安装harbor
   tasks:
   - name: Fetching the HARBOR SERVER's CA cert
     fetch:
